@@ -4,7 +4,6 @@
     "description": "Psr-15 middleware  allowing to validate the user session ownership",
     "keywords": [
         "psr-15",
-        "psr-7",
         "middleware",
         "session",
         "validation",
