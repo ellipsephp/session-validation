@@ -2,18 +2,18 @@
 
 namespace Ellipse\Session;
 
-use Exception;
-
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 use Interop\Http\Server\MiddlewareInterface;
 use Interop\Http\Server\RequestHandlerInterface;
 
+use Ellipse\Session\Exceptions\OwnershipSignatureNotValidException;
+
 class ValidateSessionMiddleware implements MiddlewareInterface
 {
     /**
-     * The value of the key the metadata should be stored under.
+     * The value of the key the ownership metadata should be stored under.
      *
      * @var string
      */
@@ -37,9 +37,9 @@ class ValidateSessionMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Compare the list of key => value pairs to validate with the session
-     * metadata and invalidate the session store if the metadata is set and
-     * doesn't match.
+     * Build a signature and compare it to the ownership metadata stored in
+     * session. Invalidate the session when any key does not match. Process the
+     * request and save the current signature in session.
      *
      * @param \Psr\Http\Message\ServerRequestInterface      $request
      * @param \Interop\Http\Server\RequestHandlerInterface  $handler
@@ -47,17 +47,26 @@ class ValidateSessionMiddleware implements MiddlewareInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
+        // Get a valid signature.
         $signature = ($this->signature)($request);
 
+        if (! is_array($signature)) {
+
+            throw new OwnershipSignatureNotValidException($signature);
+
+        }
+
+        // Invalidate the session when signature and session does not match.
         $metadata = $_SESSION[self::METADATA_KEY] ?? [];
 
-        if (! $this->validate($signature, $metadata)) {
+        if (! $this->compare($signature, $metadata)) {
 
             session_unset();
             session_regenerate_id();
 
         }
 
+        // Process the request and save the current signature.
         $response = $handler->handle($request);
 
         $_SESSION[self::METADATA_KEY] = $signature;
@@ -66,40 +75,22 @@ class ValidateSessionMiddleware implements MiddlewareInterface
     }
 
     /**
-     * Return whether the given signature matches the given data.
+     * Return whether all keys of the given signature match the given metadata.
      *
      * @param array $signature
-     * @param array $data
+     * @param array $metadata
      * @return bool
      */
-    private function validate(array $signature, array $data): bool
+    private function compare(array $signature, array $metadata): bool
     {
-        foreach ($signature as $key => $value) {
+        foreach ($signature as $key => $v1) {
 
-            $metadata = $_SESSION[self::METADATA_KEY][$key] ?? null;
+            $v2 = $metadata[$key] ?? null;
 
-            if (! $this->match($value, $metadata)) {
-
-                return false;
-
-            }
+            if (! is_null($v2) && $v1 !== $v2) return false;
 
         }
 
         return true;
-    }
-
-    /**
-     * Return whether the second value is not null and equals the first one.
-     *
-     * @param string $v1
-     * @param string $v2
-     * @return bool
-     */
-    private function match($value, $metadata): bool
-    {
-        if (is_null($metadata)) return true;
-
-        return $value === $metadata;
     }
 }
