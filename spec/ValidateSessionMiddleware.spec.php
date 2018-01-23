@@ -5,9 +5,8 @@ use function Eloquent\Phony\Kahlan\stub;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
-
-use Interop\Http\Server\MiddlewareInterface;
-use Interop\Http\Server\RequestHandlerInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 use Ellipse\Session\ValidateSessionMiddleware;
 use Ellipse\Session\Exceptions\OwnershipSignatureNotValidException;

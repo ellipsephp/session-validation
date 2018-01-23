@@ -4,9 +4,8 @@ namespace Ellipse\Session;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
-
-use Interop\Http\Server\MiddlewareInterface;
-use Interop\Http\Server\RequestHandlerInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 use Ellipse\Session\Exceptions\OwnershipSignatureNotValidException;
 
@@ -41,8 +40,8 @@ class ValidateSessionMiddleware implements MiddlewareInterface
      * session. Invalidate the session when any key does not match. Process the
      * request and save the current signature in session.
      *
-     * @param \Psr\Http\Message\ServerRequestInterface      $request
-     * @param \Interop\Http\Server\RequestHandlerInterface  $handler
+     * @param \Psr\Http\Message\ServerRequestInterface  $request
+     * @param \Psr\Http\Server\RequestHandlerInterface  $handler
      * @return \Psr\Http\Message\ResponseInterface
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
