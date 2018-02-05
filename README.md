@@ -1,6 +1,6 @@
 # Session validation
 
-This package provides a Psr-15 middleware allowing to validate the user session ownership.
+This package provides a [Psr-15 middleware](https://www.php-fig.org/psr/psr-15/) allowing to validate the user session ownership.
 
 **Require** php >= 7.1
 
