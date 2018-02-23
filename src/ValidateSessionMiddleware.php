@@ -7,7 +7,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-use Ellipse\Session\Exceptions\OwnershipSignatureNotValidException;
+use Ellipse\Session\Exceptions\OwnershipSignatureTypeException;
 
 class ValidateSessionMiddleware implements MiddlewareInterface
 {
@@ -51,7 +51,7 @@ class ValidateSessionMiddleware implements MiddlewareInterface
 
         if (! is_array($signature)) {
 
-            throw new OwnershipSignatureNotValidException($signature);
+            throw new OwnershipSignatureTypeException($signature);
 
         }
 
@@ -60,7 +60,7 @@ class ValidateSessionMiddleware implements MiddlewareInterface
 
         if (! $this->compare($signature, $metadata)) {
 
-            session_unset();
+            $_SESSION = [];
             session_regenerate_id();
 
         }

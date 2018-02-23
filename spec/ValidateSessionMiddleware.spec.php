@@ -9,24 +9,23 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
 use Ellipse\Session\ValidateSessionMiddleware;
-use Ellipse\Session\Exceptions\OwnershipSignatureNotValidException;
+use Ellipse\Session\Exceptions\OwnershipSignatureTypeException;
 
 describe('ValidateSessionMiddleware', function () {
 
-    beforeAll(function () {
+    beforeEach(function () {
 
-        session_cache_limiter('');
-        session_start(['use_cookies' => false]);
+        $_SESSION = [];
+
+        $this->signature = stub();
+
+        $this->middleware = new ValidateSessionMiddleware($this->signature);
 
     });
 
     it('should implement MiddlewareInterface', function () {
 
-        $signature = stub();
-
-        $test = new ValidateSessionMiddleware($signature);
-
-        expect($test)->toBeAnInstanceOf(MiddlewareInterface::class);
+        expect($this->middleware)->toBeAnInstanceOf(MiddlewareInterface::class);
 
     });
 
@@ -45,23 +44,19 @@ describe('ValidateSessionMiddleware', function () {
 
         it('should proxy the request handler ->handle() method', function () {
 
-            $signature = stub()->returns([]);
+            $this->signature->with($this->request)->returns([]);
 
-            $middleware = new ValidateSessionMiddleware($signature);
-
-            $test = $middleware->process($this->request, $this->handler->get());
+            $test = $this->middleware->process($this->request, $this->handler->get());
 
             expect($test)->toBe($this->response);
 
         });
 
-        it('should add the signature values to the session metadata', function () {
+        it('should add the produced signature values to the session metadata', function () {
 
-            $signature = stub()->returns(['clientip' => 'ip']);
+            $this->signature->with($this->request)->returns(['clientip' => 'ip']);
 
-            $middleware = new ValidateSessionMiddleware($signature);
-
-            $middleware->process($this->request, $this->handler->get());
+            $this->middleware->process($this->request, $this->handler->get());
 
             expect($_SESSION)->toEqual([
                 ValidateSessionMiddleware::METADATA_KEY => [
@@ -71,21 +66,19 @@ describe('ValidateSessionMiddleware', function () {
 
         });
 
-        context('when the signature is not an array', function () {
+        context('when the produced signature is not an array', function () {
 
             it('should throw an OwnershipSignatureNotValidException', function () {
 
-                $signature = stub()->returns('signature');
+                $this->signature->with($this->request)->returns('signature');
 
-                $middleware = new ValidateSessionMiddleware($signature);
+                $test = function () {
 
-                $test = function () use ($middleware) {
-
-                    $middleware->process($this->request, $this->handler->get());
+                    $this->middleware->process($this->request, $this->handler->get());
 
                 };
 
-                $exception = new OwnershipSignatureNotValidException('signature');
+                $exception = new OwnershipSignatureTypeException('signature');
 
                 expect($test)->toThrow($exception);
 
@@ -93,31 +86,13 @@ describe('ValidateSessionMiddleware', function () {
 
         });
 
-        context('when the signature is an empty array', function () {
+        context('when the produced signature is an empty array', function () {
 
-            beforeEach(function () {
+            it('should not update the session data', function () {
 
                 $_SESSION = ['key' => 'value'];
 
-                $signature = stub()->returns([]);
-
-                $this->middleware = new ValidateSessionMiddleware($signature);
-
-            });
-
-            it('should not regenerate the session id', function () {
-
-                $session_id = session_id();
-
-                $this->middleware->process($this->request, $this->handler->get());
-
-                $test = session_id();
-
-                expect($test)->toEqual($session_id);
-
-            });
-
-            it('should not update the session data', function () {
+                $this->signature->with($this->request)->returns([]);
 
                 $this->middleware->process($this->request, $this->handler->get());
 
@@ -130,7 +105,7 @@ describe('ValidateSessionMiddleware', function () {
 
         context('when the session does not contain the signature array keys', function () {
 
-            beforeEach(function () {
+            it('should not update the session data', function () {
 
                 $_SESSION = [
                     'key' => 'value',
@@ -139,25 +114,7 @@ describe('ValidateSessionMiddleware', function () {
                     ],
                 ];
 
-                $signature = stub()->returns(['clientip' => 'ip']);
-
-                $this->middleware = new ValidateSessionMiddleware($signature);
-
-            });
-
-            it('should not regenerate the session id', function () {
-
-                $session_id = session_id();
-
-                $this->middleware->process($this->request, $this->handler->get());
-
-                $test = session_id();
-
-                expect($test)->toEqual($session_id);
-
-            });
-
-            it('should not update the session data', function () {
+                $this->signature->with($this->request)->returns(['clientip' => 'ip']);
 
                 $this->middleware->process($this->request, $this->handler->get());
 
@@ -179,21 +136,23 @@ describe('ValidateSessionMiddleware', function () {
                     ],
                 ];
 
-                $signature = stub()->returns(['clientip' => 'ip']);
+                $this->signature->with($this->request)->returns(['clientip' => 'ip']);
 
-                $this->middleware = new ValidateSessionMiddleware($signature);
+                $this->regenerate = false;
+
+                allow('session_regenerate_id')->toBeCalled()->andRun(function () {
+
+                    $this->regenerate = true;
+
+                });
 
             });
 
-            it('should regenerate the session id', function () {
-
-                $session_id = session_id();
+            it('should unset and regenerate the session id', function () {
 
                 $this->middleware->process($this->request, $this->handler->get());
 
-                $test = session_id();
-
-                expect($test)->not->toEqual($session_id);
+                expect($this->regenerate)->toBeTruthy();
 
             });
 
